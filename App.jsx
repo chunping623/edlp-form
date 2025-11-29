@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Clipboard, Check, FileText, Settings, Shield, Mail, Users, Save, Trash2, Download, Lock, AlertCircle, X, CheckCircle, AlertTriangle, UserCheck } from 'lucide-react';
 
-// 設定 API 網址 (請依據實際部署 IP 修改，若前後端在同一台則用 localhost)
-const API_BASE_URL = 'http://localhost:3000/api';
+// 關鍵修改：使用相對路徑，讓 Nginx 處理反向代理
+const API_BASE_URL = '/api';
 
 const App = () => {
   // --- Form State ---
