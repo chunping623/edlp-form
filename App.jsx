@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Clipboard, Check, FileText, Settings, Shield, Mail, Users, Save, Trash2, Download, Lock, AlertCircle, X, CheckCircle, AlertTriangle, UserCheck } from 'lucide-react';
+import { Clipboard, Check, FileText, Settings, Shield, Mail, Users, Save, Trash2, Download, Lock, AlertCircle, X, CheckCircle, AlertTriangle, UserCheck, Menu } from 'lucide-react';
 
-// 關鍵修改：使用相對路徑，讓 Nginx 處理反向代理
+// 設定 API 網址 (請依據實際部署 IP 修改，若前後端在同一台則用 localhost)
 const API_BASE_URL = '/api';
 
 const App = () => {
@@ -258,7 +258,9 @@ const App = () => {
       });
 
       if (!response.ok) {
-        throw new Error('API Response not ok');
+        // Try to get error message from server
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `Server Error: ${response.status}`);
       }
       
       setErrors([]);
@@ -276,7 +278,7 @@ const App = () => {
         show: true,
         type: 'error',
         title: '儲存失敗',
-        message: '無法連線到伺服器或資料庫寫入失敗。',
+        message: `無法連線到伺服器或資料庫寫入失敗。\n(${error.message})`,
         onConfirm: null
       });
     } finally {
@@ -384,7 +386,7 @@ const App = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20 relative">
       
-      {/* Generic Notification Modal (Success / Error / Confirm) */}
+      {/* Generic Notification Modal */}
       {notification.show && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm relative transform transition-all scale-100">
@@ -407,33 +409,16 @@ const App = () => {
                       </div>
                       
                       <h3 className="text-xl font-bold text-slate-800 mb-2">{notification.title}</h3>
-                      <p className="text-slate-600 mb-6">{notification.message}</p>
+                      <p className="text-slate-600 mb-6 whitespace-pre-wrap">{notification.message}</p>
                       
                       <div className="flex gap-3 w-full">
                           {notification.type === 'confirm' ? (
                             <>
-                              <button 
-                                onClick={closeNotification}
-                                className="flex-1 py-2 px-4 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium transition-colors"
-                              >
-                                取消
-                              </button>
-                              <button 
-                                onClick={notification.onConfirm}
-                                className="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors"
-                              >
-                                確認清空
-                              </button>
+                              <button onClick={closeNotification} className="flex-1 py-2 px-4 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium transition-colors">取消</button>
+                              <button onClick={notification.onConfirm} className="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors">確認清空</button>
                             </>
                           ) : (
-                            <button 
-                              onClick={closeNotification}
-                              className={`w-full py-2.5 rounded-lg text-white font-bold transition-colors ${
-                                notification.type === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-600 hover:bg-emerald-700'
-                              }`}
-                            >
-                              {notification.type === 'error' ? '我會檢查' : '好的'}
-                            </button>
+                            <button onClick={closeNotification} className={`w-full py-2.5 rounded-lg text-white font-bold transition-colors ${notification.type === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}>好的</button>
                           )}
                       </div>
                   </div>
@@ -445,65 +430,45 @@ const App = () => {
       {showPasswordModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative">
-                  <button 
-                    onClick={() => { setShowPasswordModal(false); setPasswordInput(''); setPasswordError(''); }}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                      <X size={24} />
-                  </button>
-                  
-                  <div className="flex flex-col items-center mb-6">
-                      <div className="bg-red-100 p-3 rounded-full mb-4">
-                          <Lock size={32} className="text-red-500" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-slate-800">管理員驗證</h3>
-                      <p className="text-slate-500 mt-2">請輸入密碼以查看後台資料</p>
-                  </div>
-
+                  <button onClick={() => { setShowPasswordModal(false); setPasswordInput(''); setPasswordError(''); }} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"><X size={24} /></button>
+                  <div className="flex flex-col items-center mb-6"><div className="bg-red-100 p-3 rounded-full mb-4"><Lock size={32} className="text-red-500" /></div><h3 className="text-2xl font-bold text-slate-800">管理員驗證</h3><p className="text-slate-500 mt-2">請輸入密碼以查看後台資料</p></div>
                   <form onSubmit={handlePasswordSubmit} className="space-y-4">
                       <div>
-                          <input 
-                              type="password" 
-                              value={passwordInput}
-                              onChange={(e) => setPasswordInput(e.target.value)}
-                              placeholder="請輸入密碼"
-                              className="w-full text-center text-lg p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                              autoFocus
-                          />
-                          {passwordError && (
-                              <p className="text-red-500 text-sm mt-2 text-center flex items-center justify-center gap-1">
-                                  <AlertCircle size={14} /> {passwordError}
-                              </p>
-                          )}
+                          <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="請輸入密碼" className="w-full text-center text-lg p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all" autoFocus />
+                          {passwordError && <p className="text-red-500 text-sm mt-2 text-center flex items-center justify-center gap-1"><AlertCircle size={14} /> {passwordError}</p>}
                       </div>
-                      <button 
-                          type="submit" 
-                          className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                          確認
-                      </button>
+                      <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">確認</button>
                   </form>
               </div>
           </div>
       )}
 
-      {/* Header */}
+      {/* RWD Header: Stack on mobile, Row on tablet/desktop */}
       <header className="bg-emerald-600 text-white shadow-lg sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
           <div className="flex items-center gap-2">
             <Shield className="w-8 h-8" />
             <h1 className="text-2xl font-bold tracking-wide">eDLP 策略設定平台</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-center">
+            {/* RWD Button Styling & Active State Colors */}
             <button 
               onClick={() => handleTabChange('form')}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'form' ? 'bg-white text-emerald-700 font-bold' : 'hover:bg-emerald-500'}`}
+              className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm font-bold ${
+                activeTab === 'form' 
+                  ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
+                  : 'text-white bg-transparent hover:bg-emerald-500/50'
+              }`}
             >
               <FileText size={18} /> 表單填寫
             </button>
             <button 
               onClick={() => handleTabChange('backend')}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'backend' ? 'bg-white text-emerald-700 font-bold' : 'hover:bg-emerald-500'}`}
+              className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm font-bold ${
+                activeTab === 'backend' 
+                  ? 'bg-white text-emerald-700 shadow-md transform scale-105' 
+                  : 'text-white bg-transparent hover:bg-emerald-500/50'
+              }`}
             >
               {isBackendUnlocked ? <Settings size={18} /> : <Lock size={18} />} 
               後台資料 ({submittedData.length})
@@ -518,15 +483,11 @@ const App = () => {
         {errors.length > 0 && activeTab === 'form' && (
             <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r shadow-sm animate-in slide-in-from-top-2">
                 <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                        <AlertCircle className="h-5 w-5 text-red-500" />
-                    </div>
+                    <div className="flex-shrink-0"><AlertCircle className="h-5 w-5 text-red-500" /></div>
                     <div className="ml-3">
                         <h3 className="text-sm font-medium text-red-800">請修正以下錯誤以送出表單：</h3>
                         <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
-                            {errors.map((error, index) => (
-                                <li key={index}>{error}</li>
-                            ))}
+                            {errors.map((error, index) => (<li key={index}>{error}</li>))}
                         </ul>
                     </div>
                 </div>
@@ -537,76 +498,43 @@ const App = () => {
         {activeTab === 'form' && (
           <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             
-            {/* 0. Submitter Info Section (NEW) */}
+            {/* 0. Submitter Info Section */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                <div className="bg-purple-500 text-white p-1.5 rounded-md">
-                  <UserCheck size={20} />
-                </div>
+                <div className="bg-purple-500 text-white p-1.5 rounded-md"><UserCheck size={20} /></div>
                 <h2 className="text-xl font-bold text-slate-700">0. 填寫人資訊 (Submitter Info)</h2>
               </div>
               <div className="p-6 space-y-6">
                 
-                {/* Name */}
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <label className="font-bold text-slate-700 min-w-[100px]">
-                    填寫人 <span className="text-slate-400 font-normal text-sm">(選填)</span>:
-                  </label>
-                  <input 
-                    type="text" 
-                    name="submitterName" 
-                    value={formData.submitterName} 
-                    onChange={handleInputChange} 
-                    maxLength={10}
-                    placeholder="限填10字" 
-                    className="w-full md:w-48 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:outline-none" 
-                  />
+                  <label className="font-bold text-slate-700 min-w-[100px]">填寫人 <span className="text-slate-400 font-normal text-sm">(選填)</span>:</label>
+                  <input type="text" name="submitterName" value={formData.submitterName} onChange={handleInputChange} maxLength={10} placeholder="限填10字" className="w-full md:w-48 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:outline-none" />
                 </div>
 
-                {/* Role (Radio) */}
                 <div className="flex flex-col md:flex-row md:items-start gap-4">
-                   <label className="font-bold text-slate-700 min-w-[100px] mt-2">
-                    職級 <span className="text-red-500 text-sm align-top">*必選</span>:
-                   </label>
+                   <label className="font-bold text-slate-700 min-w-[100px] mt-2">職級 <span className="text-red-500 text-sm align-top">*必選</span>:</label>
                    <div className="flex flex-wrap gap-4">
                       {['部門二級主管', '部門三級主管', '部門四級主管'].map((role) => (
                         <label key={role} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${formData.submitterRole === role ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-slate-200 hover:border-purple-200'}`}>
-                          <input 
-                            type="radio" 
-                            name="submitterRole" 
-                            value={role} 
-                            checked={formData.submitterRole === role} 
-                            onChange={handleInputChange} 
-                            className="w-4 h-4 text-purple-600 focus:ring-purple-500 mr-2"
-                          />
+                          <input type="radio" name="submitterRole" value={role} checked={formData.submitterRole === role} onChange={handleInputChange} className="w-4 h-4 text-purple-600 focus:ring-purple-500 mr-2" />
                           <span>{role}</span>
                         </label>
                       ))}
                    </div>
                 </div>
-
               </div>
             </section>
 
             {/* 1. Office Section */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                <div className="bg-emerald-500 text-white p-1.5 rounded-md">
-                  <Users size={20} />
-                </div>
+                <div className="bg-emerald-500 text-white p-1.5 rounded-md"><Users size={20} /></div>
                 <h2 className="text-xl font-bold text-slate-700">1. 辦公室選擇 (Office) <span className="text-red-500 text-sm align-top">*必選</span></h2>
               </div>
               <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {['瑞三office', '瑞四office', '台元office', '其他office'].map((opt) => (
                   <label key={opt} className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.office === opt ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:border-emerald-200'}`}>
-                    <input 
-                      type="radio" 
-                      name="office" 
-                      value={opt} 
-                      checked={formData.office === opt} 
-                      onChange={handleInputChange} 
-                      className="w-5 h-5 text-emerald-600 focus:ring-emerald-500 mr-3"
-                    />
+                    <input type="radio" name="office" value={opt} checked={formData.office === opt} onChange={handleInputChange} className="w-5 h-5 text-emerald-600 focus:ring-emerald-500 mr-3" />
                     <span className="font-medium">{opt}</span>
                   </label>
                 ))}
@@ -616,9 +544,7 @@ const App = () => {
             {/* 2. Detection Policy */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                <div className="bg-blue-500 text-white p-1.5 rounded-md">
-                  <Shield size={20} />
-                </div>
+                <div className="bg-blue-500 text-white p-1.5 rounded-md"><Shield size={20} /></div>
                 <h2 className="text-xl font-bold text-slate-700">2. 檢測策略 (Detection Policy)</h2>
               </div>
               
@@ -630,26 +556,15 @@ const App = () => {
                     <input type="checkbox" name="blacklist_checked" checked={formData.blacklist_checked} onChange={handleInputChange} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
                     <span className="text-lg font-bold text-slate-800">黑名單 (Blacklist)</span>
                   </label>
-                  
                   {formData.blacklist_checked && (
                     <div className="ml-8 mt-3 space-y-3 pl-4 border-l-2 border-blue-200 animate-in fade-in slide-in-from-top-2">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]">
-                          <input type="checkbox" name="blacklist_domain" checked={formData.blacklist_domain} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                          <span>收、發件人域名/信箱/IP</span>
-                        </label>
-                        {formData.blacklist_domain && (
-                          <input type="text" name="blacklist_domain_val" value={formData.blacklist_domain_val} onChange={handleInputChange} placeholder="例如: @badsite.com" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]"><input type="checkbox" name="blacklist_domain" checked={formData.blacklist_domain} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>收、發件人域名/信箱/IP</span></label>
+                        {formData.blacklist_domain && <input type="text" name="blacklist_domain_val" value={formData.blacklist_domain_val} onChange={handleInputChange} placeholder="例如: @badsite.com" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />}
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]">
-                          <input type="checkbox" name="blacklist_regex" checked={formData.blacklist_regex} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                          <span>正規表達式</span>
-                        </label>
-                        {formData.blacklist_regex && (
-                          <input type="text" name="blacklist_regex_val" value={formData.blacklist_regex_val} onChange={handleInputChange} placeholder="輸入 Regex Pattern" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]"><input type="checkbox" name="blacklist_regex" checked={formData.blacklist_regex} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>正規表達式</span></label>
+                        {formData.blacklist_regex && <input type="text" name="blacklist_regex_val" value={formData.blacklist_regex_val} onChange={handleInputChange} placeholder="輸入 Regex Pattern" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />}
                       </div>
                     </div>
                   )}
@@ -661,26 +576,15 @@ const App = () => {
                     <input type="checkbox" name="whitelist_checked" checked={formData.whitelist_checked} onChange={handleInputChange} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
                     <span className="text-lg font-bold text-slate-800">白名單 (Whitelist)</span>
                   </label>
-                  
                   {formData.whitelist_checked && (
                     <div className="ml-8 mt-3 space-y-3 pl-4 border-l-2 border-blue-200 animate-in fade-in slide-in-from-top-2">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]">
-                          <input type="checkbox" name="whitelist_domain" checked={formData.whitelist_domain} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                          <span>收、發件人域名/信箱/IP</span>
-                        </label>
-                        {formData.whitelist_domain && (
-                          <input type="text" name="whitelist_domain_val" value={formData.whitelist_domain_val} onChange={handleInputChange} placeholder="例如: @trusted.com" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]"><input type="checkbox" name="whitelist_domain" checked={formData.whitelist_domain} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>收、發件人域名/信箱/IP</span></label>
+                        {formData.whitelist_domain && <input type="text" name="whitelist_domain_val" value={formData.whitelist_domain_val} onChange={handleInputChange} placeholder="例如: @trusted.com" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />}
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]">
-                          <input type="checkbox" name="whitelist_regex" checked={formData.whitelist_regex} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                          <span>正規表達式</span>
-                        </label>
-                        {formData.whitelist_regex && (
-                          <input type="text" name="whitelist_regex_val" value={formData.whitelist_regex_val} onChange={handleInputChange} placeholder="輸入 Regex Pattern" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer min-w-[200px]"><input type="checkbox" name="whitelist_regex" checked={formData.whitelist_regex} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>正規表達式</span></label>
+                        {formData.whitelist_regex && <input type="text" name="whitelist_regex_val" value={formData.whitelist_regex_val} onChange={handleInputChange} placeholder="輸入 Regex Pattern" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />}
                       </div>
                     </div>
                   )}
@@ -692,27 +596,17 @@ const App = () => {
                     <input type="checkbox" name="keywords_checked" checked={formData.keywords_checked} onChange={handleInputChange} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
                     <span className="text-lg font-bold text-slate-800">關鍵字 (Keywords)</span>
                   </label>
-                  
                   {formData.keywords_checked && (
                     <div className="ml-8 mt-3 space-y-3 pl-4 border-l-2 border-blue-200 animate-in fade-in slide-in-from-top-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="keywords_caseSensitive" checked={formData.keywords_caseSensitive} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                        <span className="text-slate-600">英文大小寫敏感，繁簡中敏感</span>
-                      </label>
-                      
+                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="keywords_caseSensitive" checked={formData.keywords_caseSensitive} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span className="text-slate-600">英文大小寫敏感，繁簡中敏感</span></label>
                       {['subject', 'content', 'attachment'].map(field => {
                          const labelMap = { subject: '主題', content: '內容', attachment: '附件' };
                          const fieldName = `keywords_${field}`;
                          const valName = `keywords_${field}_val`;
                          return (
                           <div key={field} className="flex flex-col sm:flex-row sm:items-center gap-2">
-                            <label className="flex items-center gap-2 cursor-pointer min-w-[100px]">
-                              <input type="checkbox" name={fieldName} checked={formData[fieldName]} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                              <span>{labelMap[field]}</span>
-                            </label>
-                            {formData[fieldName] && (
-                              <input type="text" name={valName} value={formData[valName]} onChange={handleInputChange} placeholder={`輸入${labelMap[field]}關鍵字`} className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                            )}
+                            <label className="flex items-center gap-2 cursor-pointer min-w-[100px]"><input type="checkbox" name={fieldName} checked={formData[fieldName]} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>{labelMap[field]}</span></label>
+                            {formData[fieldName] && <input type="text" name={valName} value={formData[valName]} onChange={handleInputChange} placeholder={`輸入${labelMap[field]}關鍵字`} className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />}
                           </div>
                          );
                       })}
@@ -726,60 +620,32 @@ const App = () => {
                     <input type="checkbox" name="attachment_checked" checked={formData.attachment_checked} onChange={handleInputChange} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
                     <span className="text-lg font-bold text-slate-800">附件 (Attachment)</span>
                   </label>
-                  
                   {formData.attachment_checked && (
                     <div className="ml-8 mt-3 space-y-3 pl-4 border-l-2 border-blue-200 animate-in fade-in slide-in-from-top-2">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer min-w-[150px]">
-                          <input type="checkbox" name="attachment_size" checked={formData.attachment_size} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                          <span>附件大小</span>
-                        </label>
-                        {formData.attachment_size && (
-                          <div className="flex items-center gap-2">
-                             <input type="number" name="attachment_size_val" value={formData.attachment_size_val} onChange={handleInputChange} className="w-24 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                             <span className="text-slate-500">MB</span>
-                          </div>
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer min-w-[150px]"><input type="checkbox" name="attachment_size" checked={formData.attachment_size} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>附件大小</span></label>
+                        {formData.attachment_size && <div className="flex items-center gap-2"><input type="number" name="attachment_size_val" value={formData.attachment_size_val} onChange={handleInputChange} className="w-24 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" /><span className="text-slate-500">MB</span></div>}
                       </div>
 
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer min-w-[150px]">
-                          <input type="checkbox" name="attachment_count" checked={formData.attachment_count} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                          <span>附件數量</span>
-                        </label>
-                        {formData.attachment_count && (
-                          <div className="flex items-center gap-2">
-                             <input type="number" name="attachment_count_val" value={formData.attachment_count_val} onChange={handleInputChange} className="w-24 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                             <span className="text-slate-500">個</span>
-                          </div>
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer min-w-[150px]"><input type="checkbox" name="attachment_count" checked={formData.attachment_count} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>附件數量</span></label>
+                        {formData.attachment_count && <div className="flex items-center gap-2"><input type="number" name="attachment_count_val" value={formData.attachment_count_val} onChange={handleInputChange} className="w-24 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" /><span className="text-slate-500">個</span></div>}
                       </div>
 
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="attachment_compress" checked={formData.attachment_compress} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                        <span>壓縮檔</span>
-                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="attachment_compress" checked={formData.attachment_compress} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>壓縮檔</span></label>
 
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer min-w-[150px]">
-                          <input type="checkbox" name="attachment_ext" checked={formData.attachment_ext} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                          <span>副檔名</span>
-                        </label>
-                        {formData.attachment_ext && (
-                          <input type="text" name="attachment_ext_val" value={formData.attachment_ext_val} onChange={handleInputChange} placeholder="例如: exe;txt;ai" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer min-w-[150px]"><input type="checkbox" name="attachment_ext" checked={formData.attachment_ext} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>副檔名</span></label>
+                        {formData.attachment_ext && <input type="text" name="attachment_ext_val" value={formData.attachment_ext_val} onChange={handleInputChange} placeholder="例如: exe;txt;ai" className="flex-1 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />}
                       </div>
 
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="attachment_tamper" checked={formData.attachment_tamper} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" />
-                        <span>被竄改的副檔名</span>
-                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="attachment_tamper" checked={formData.attachment_tamper} onChange={handleInputChange} className="w-4 h-4 rounded text-blue-600" /><span>被竄改的副檔名</span></label>
                     </div>
                   )}
                 </div>
 
                 {/* Simple Checkboxes */}
-                <div className="flex gap-6">
+                <div className="flex flex-col md:flex-row gap-6">
                   <label className="flex items-center gap-2 cursor-pointer p-4 border border-slate-200 rounded-lg hover:bg-slate-50 w-full transition-all">
                     <input type="checkbox" name="sourcecode_checked" checked={formData.sourcecode_checked} onChange={handleInputChange} className="w-5 h-5 rounded text-blue-600" />
                     <span className="font-bold">源代碼 (Source Code)</span>
@@ -796,9 +662,7 @@ const App = () => {
             {/* 3. Control Measures */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                <div className="bg-orange-500 text-white p-1.5 rounded-md">
-                  <Settings size={20} />
-                </div>
+                <div className="bg-orange-500 text-white p-1.5 rounded-md"><Settings size={20} /></div>
                 <h2 className="text-xl font-bold text-slate-700">3. 管制措施 (Control)</h2>
               </div>
               
@@ -814,22 +678,18 @@ const App = () => {
 
                      {formData.approval_checked && (
                        <div className="flex-1 bg-orange-50 p-4 rounded-lg space-y-4 border border-orange-100 animate-in fade-in slide-in-from-top-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                             <span className="font-medium text-slate-700">審批時間 <span className="text-red-500">*</span>:</span>
                             <input type="number" name="approval_time" value={formData.approval_time} onChange={handleInputChange} className="w-24 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500 outline-none" placeholder="分鐘" />
                             <span className="text-slate-500">分鐘</span>
                           </div>
                           
-                          <div className="flex items-center gap-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                             <span className="font-medium text-slate-700">超時策略:</span>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="approval_timeout_strategy" value="自動通過" checked={formData.approval_timeout_strategy === '自動通過'} onChange={handleInputChange} className="text-orange-600" />
-                              <span>自動通過</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="approval_timeout_strategy" value="自動攔截" checked={formData.approval_timeout_strategy === '自動攔截'} onChange={handleInputChange} className="text-orange-600" />
-                              <span>自動攔截</span>
-                            </label>
+                            <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="approval_timeout_strategy" value="自動通過" checked={formData.approval_timeout_strategy === '自動通過'} onChange={handleInputChange} className="text-orange-600" /><span>自動通過</span></label>
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="approval_timeout_strategy" value="自動攔截" checked={formData.approval_timeout_strategy === '自動攔截'} onChange={handleInputChange} className="text-orange-600" /><span>自動攔截</span></label>
+                            </div>
                           </div>
                        </div>
                      )}
@@ -878,8 +738,8 @@ const App = () => {
 
             {/* Submit Button */}
             <div className="flex justify-end pt-4">
-               <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform transition-all active:scale-95 flex items-center gap-2">
-                 <Save size={24} /> 儲存並送出策略
+               <button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                 <Save size={24} /> {isSubmitting ? '處理中...' : '儲存並送出策略'}
                </button>
             </div>
 
@@ -890,7 +750,7 @@ const App = () => {
         {activeTab === 'backend' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
             <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-              <div className="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+              <div className="bg-slate-800 text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Settings size={20} /> 後台資料模擬 (Backend Simulation)
                 </h2>
