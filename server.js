@@ -10,11 +10,12 @@ app.use(cors());
 app.use(express.json());
 
 // 設定 PostgreSQL 連線
+// ⚠️ 請務必修改為您實際的資料庫密碼
 const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
   database: 'edlp_db',
-  password: 'your_password_here',
+  password: 'your_password_here', // <--- 🔴 務必確認這裡的密碼已修改為正確密碼
   port: 5432,
 });
 
@@ -23,8 +24,8 @@ const router = express.Router();
 
 // 測試連線
 pool.connect((err) => {
-  if (err) console.error('資料庫連線失敗:', err.stack);
-  else console.log('已連線到 PostgreSQL');
+  if (err) console.error('資料庫連線失敗 (啟動時檢查):', err.stack);
+  else console.log('已成功連線到 PostgreSQL 資料庫');
 });
 
 // 1. 獲取資料
@@ -50,13 +51,16 @@ router.get('/records', async (req, res) => {
     }));
     res.json(formattedData);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'DB Error' });
+    console.error('讀取錯誤:', err);
+    // 回傳詳細錯誤給前端以便除錯
+    res.status(500).json({ error: err.message });
   }
 });
 
 // 2. 新增資料
 router.post('/submit', async (req, res) => {
+  console.log('收到寫入請求:', req.body); // 🖨️ 印出收到的資料，確認前端有送出內容
+
   const data = req.body;
   const query = `
     INSERT INTO edlp_responses 
@@ -72,10 +76,12 @@ router.post('/submit', async (req, res) => {
 
   try {
     const result = await pool.query(query, values);
+    console.log('寫入成功，ID:', result.rows[0].id);
     res.json({ success: true, id: result.rows[0].id });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Write Error' });
+    console.error('寫入錯誤:', err); // ❌ 這裡會在 PM2 logs 顯示詳細錯誤
+    // 回傳詳細錯誤給前端以便除錯
+    res.status(500).json({ error: `資料庫錯誤: ${err.message}` });
   }
 });
 
@@ -85,7 +91,8 @@ router.delete('/clear', async (req, res) => {
     await pool.query('TRUNCATE TABLE edlp_responses');
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Clear Error' });
+    console.error('清空錯誤:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
